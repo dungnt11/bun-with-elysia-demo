@@ -2,11 +2,20 @@
   "name": "app",
   "version": "1.0.50",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun --watch src/index.js",
+    "build": "bun build src/index.js",
+    "start": "NODE_ENV=production bun src/index.js",
+    "test": "bun test"
   },
   "dependencies": {
-    "elysia": "latest"
+    "@elysiajs/cors": "^0.8.0",
+    "@elysiajs/jwt": "^0.8.0",
+    "@elysiajs/swagger": "^0.8.3",
+    "@grotto/logysia": "^0.1.1",
+    "bcrypt": "^5.1.1",
+    "elysia": "latest",
+    "elysia-helmet": "^1.0.2",
+    "mongoose": "^8.1.0"
   },
   "devDependencies": {
     "bun-types": "latest"
