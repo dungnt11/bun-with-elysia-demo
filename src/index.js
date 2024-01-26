@@ -4,7 +4,8 @@ import { cors } from '@elysiajs/cors';
 import { helmet } from 'elysia-helmet';
 import { jwt } from '@elysiajs/jwt';
 import { logger } from '@grotto/logysia';
-import './config/mongo';
+import { v4 } from 'uuid';
+// import './config/mongo';
 
 import { isAuthenticatedHttp, isAuthenticatedWS } from './middleware/jwt';
 // Routers
@@ -12,7 +13,10 @@ import authRouter from './modules/auth';
 import userRouter from './modules/user';
 
 // Ws
-import { getDevices } from './ws/device';
+import ClientHandle from "./ws/clientHandle";
+import ClientConnectionManager from "./ws/clientConnectionManager";
+
+const clientConnectionManager = new ClientConnectionManager();
 
 const app = new Elysia()
   .use(swagger({
@@ -47,17 +51,25 @@ const app = new Elysia()
   // ws dùng hệ thống auth riêng nên không phải đặt trước onBeforeHandle auth của http
   .ws('/ws', {
     body: t.Object({
-      type: t.String(),
-      d: t.String(),
+      type: t.Optional(t.String()),
+      content: t.Optional(t.Any()),
     }),
-    message(ws, message) {
-      switch(message.type) {
-        case 'get-device':
-          getDevices(ws, message.d);
-      }
+    open: (ws) => {
+      const idSocket = v4();
+      const clientHandle = new ClientHandle(idSocket, clientConnectionManager);
+      clientHandle.initialize(ws);
+      clientConnectionManager.addClient(idSocket, clientHandle);
+      ws.data.store.clientHandle = clientHandle;
     },
+    close: (ws) => {
+      ws.data.store.clientHandle.handleClientDisconnection();
+    },
+    message(ws, message) {
+      ws.data.store.clientHandle.handleClientMessage(message);
+    },
+    response: t.String(),
     maxPayloadLength: 1024 * 1024, // 1 MB
-    beforeHandle: ({ headers, jwt, set, store }) => isAuthenticatedWS({ headers, jwt, set, store }),
+    // beforeHandle: ({ headers, jwt, set, store }) => isAuthenticatedWS({ headers, jwt, set, store }),
   })
   // không auth
   .use(authRouter)
